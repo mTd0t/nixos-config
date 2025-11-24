@@ -1,19 +1,17 @@
-#!/usr/bin/env nix-shell
-#!nix-shell -i bash -p bash xorg.xrandr
+#!/usr/bin/env bash
+# brightness-down.sh – step VGA-1 brightness down by 0.1 each run
+# NixOS-safe: no hard-coded paths, uses whatever xrandr is in $PATH
 
-# Get the current brightness level for VGA-0
-current_brightness=$(xrandr --verbose --current | grep -A5 "VGA-1" | grep Brightness | awk '{print $2}')
+OUTPUT="VGA-1"
+STEP="0.1"
+MIN="0.1"
 
-# Check if current_brightness is empty
-if [ -z "$current_brightness" ]; then
-    echo "Error: Could not retrieve current brightness for VGA-1"
-    exit 1
-fi
+# Get current brightness
+CUR=$(xrandr --verbose | awk "/^$OUTPUT connected/,/Brightness:/" | awk -F': ' '/Brightness:/ {print $2}')
+[[ -z "$CUR" ]] && { echo "Could not read brightness for $OUTPUT"; exit 1; }
 
-# Calculate new brightness (increase by 0.1)
-new_brightness=$(echo "$current_brightness - 0.1" | bc)
+# Calculate new brightness
+NEW=$(awk -v c="$CUR" -v s="$STEP" -v m="$MIN" 'BEGIN { printf "%.2f", (c-s<m?m:c-s) }')
 
-# Apply new brightness level
-xrandr --output VGA-1 --brightness $new_brightness
-
-echo "Brightness increased to $new_brightness"
+# Apply
+xrandr --output "$OUTPUT" --brightness "$NEW"
